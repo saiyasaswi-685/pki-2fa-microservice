@@ -1,23 +1,30 @@
-#!/usr/bin/env python3
-import os, base64, pyotp, datetime
+import os
+import time
+from crypto_utils import generate_totp_code
 
 SEED_PATH = "/data/seed.txt"
+LOG_PATH = "/cron/last_code.txt"
 
 def main():
+    if not os.path.exists(SEED_PATH):
+        with open(LOG_PATH, "a") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Seed not found\n")
+        return
+
     try:
-        if not os.path.exists(SEED_PATH):
-            print("Seed not found", flush=True)
-            return
-        with open(SEED_PATH) as f:
+        with open(SEED_PATH, "r") as f:
             hex_seed = f.read().strip()
-        seed_bytes = bytes.fromhex(hex_seed)
-        base32_seed = base64.b32encode(seed_bytes).decode("utf-8")
-        totp = pyotp.TOTP(base32_seed)
-        code = totp.now()
-        timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"{timestamp} - 2FA Code: {code}", flush=True)
+
+        code = generate_totp_code(hex_seed)
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        with open(LOG_PATH, "a") as f:
+            f.write(f"{timestamp} - 2FA Code: {code}\n")
+
     except Exception as e:
-        print(f"Error: {e}", flush=True)
+        with open(LOG_PATH, "a") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Error: {str(e)}\n")
+
 
 if __name__ == "__main__":
     main()
